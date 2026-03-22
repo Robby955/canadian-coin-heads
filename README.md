@@ -9,6 +9,12 @@
 ![Platform](https://img.shields.io/badge/Platform-iOS_17%2B-black)
 ![License](https://img.shields.io/badge/License-Proprietary-lightgrey)
 
+<p align="center">
+  <img src="assets/portfolio-stack.png" width="250" alt="Portfolio Stack View" />
+  <img src="assets/portfolio-collectibles.png" width="250" alt="Collectibles View" />
+  <img src="assets/portfolio-series.png" width="250" alt="Series Completion Tracking" />
+</p>
+
 ## Overview
 
 Canadian Coin Heads is a production iOS app, live on the App Store, that identifies 5,791+ Royal Canadian Mint coins from a single photo. The app covers every Canadian coin denomination from 1858 to 2026 -- circulation, bullion, and collectible series.
