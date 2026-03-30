@@ -19,8 +19,8 @@ Canadian Coin Heads uses a progressive three-phase identification pipeline. The 
                   |         Target: <300ms                   |
                   |                                          |
                   |  +------------------------------------+  |
-                  |  | CoinCLIP v3.2 (Core ML)            |  |
-                  |  | MobileCLIP-S2 + LoRA (68.8 MB)     |  |
+                  |  | CoinCLIP v4.2 (Core ML)            |  |
+                  |  | MobileCLIP-S2 + LoRA (137 MB)      |  |
                   |  | Input: 256x256 photo               |  |
                   |  | Output: 512-dim embedding          |  |
                   |  +------------------+-----------------+  |
@@ -28,7 +28,7 @@ Canadian Coin Heads uses a progressive three-phase identification pipeline. The 
                   |                     v                    |
                   |  +------------------------------------+  |
                   |  | vDSP Similarity Search             |  |
-                  |  | 44,328 pre-computed embeddings     |  |
+                  |  | 25,427 pre-computed embeddings     |  |
                   |  | Cosine similarity via Accelerate   |  |
                   |  | Full search: <50ms                 |  |
                   |  +------------------+-----------------+  |
@@ -100,23 +100,23 @@ The progressive architecture is motivated by a simple observation: most coins ar
 
 ## On-Device Model
 
-### CoinCLIP v3.2
+### CoinCLIP v4.2
 
-The on-device model is a MobileCLIP-S2 visual encoder fine-tuned with LoRA on 42,674 real coin photographs.
+The on-device model is a MobileCLIP-S2 visual encoder fine-tuned with LoRA on 44,332 real coin photographs (25,591 unique after deduplication).
 
 **Architecture:**
 - Base: MobileCLIP-S2 visual encoder (Apple's distilled CLIP variant)
 - Fine-tuning: LoRA rank-16 on Q/K/V attention projections
 - Input: 256 x 256 RGB image, ImageNet normalization
 - Output: 512-dimensional L2-normalized embedding
-- Trainable parameters: ~0.4M (of 137M total)
+- Trainable parameters: 274K (of 137M total)
 
 **Core ML conversion:**
 - Weights: LoRA merged into base model (zero additional inference cost)
-- Precision: Float16 quantization
-- File size: 68.8 MB on disk
+- Precision: Float32 (MobileCLIP-S2's reparameterized convolutions have weights that exceed Float16 range, causing NaN on device)
+- File size: 137 MB on disk
 - Compatibility: iOS 17+ (iPhone 12 and later)
-- Inference: Apple Neural Engine where available, GPU fallback
+- Inference: CPU compute (required for Float32 precision; ANE/GPU use Float16 arithmetic internally)
 
 **Latency breakdown (iPhone 12):**
 
@@ -124,18 +124,18 @@ The on-device model is a MobileCLIP-S2 visual encoder fine-tuned with LoRA on 42
 |-------|------|
 | Image preprocessing (resize, normalize) | ~10ms |
 | Core ML model inference | ~200-250ms |
-| vDSP similarity search (44,328 embeddings) | ~30-50ms |
+| vDSP similarity search (25,427 embeddings) | ~30-50ms |
 | OCR text extraction + scoring | ~20-50ms |
 | **Total** | **<300ms** |
 
 ### Embedding Database
 
-The 44,328 pre-computed embeddings are stored in two files bundled with the app:
+The 25,427 pre-computed embeddings are stored in two files bundled with the app:
 
-- **Binary file** (86.6 MB): Flat array of Float32 values, 44,328 embeddings x 512 dimensions. Memory-mapped at runtime for zero-copy access.
-- **Index file** (6.5 MB JSON): Maps each embedding position to coin ID, design family, denomination, year, and metadata needed for result display.
+- **Binary file** (49.7 MB): Flat array of Float32 values, 25,427 embeddings x 512 dimensions. Memory-mapped at runtime for zero-copy access.
+- **Index file** (~3.4 MB JSON): Maps each embedding position to coin ID, design family, denomination, year, and metadata needed for result display.
 
-Similarity search is implemented with vDSP matrix multiplication (Apple Accelerate framework), computing cosine similarity between the query embedding and all 44,328 stored embeddings in a single vectorized operation.
+Similarity search is implemented with vDSP matrix multiplication (Apple Accelerate framework), computing cosine similarity between the query embedding and all 25,427 stored embeddings in a single vectorized operation.
 
 ## Cloud Fallback
 
