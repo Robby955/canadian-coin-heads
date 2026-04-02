@@ -56,6 +56,57 @@ Key innovations:
 
 See [APPROACH.md](APPROACH.md) for the full training methodology and architecture decisions.
 
+## Why This Problem Is Hard
+
+Canadian coin recognition on a phone is not a clean classification problem.
+
+- The same obverse portrait repeats across long date ranges.
+- Many coins differ by small year text, mint marks, finish, or colour treatment rather than by a completely different design.
+- Real phone images introduce glare, blur, cropping error, holder reflections, pocket wear, and background clutter.
+- The app has to work on circulation pieces, commemoratives, bullion, and odd edge cases in one system.
+
+That is why a generic "global image in, exact coin out" approach has not been enough.
+
+## Research Context
+
+One useful reference point has been the Roman-coin literature. Those papers generally worked because they made the task more structured than the phone problem we are dealing with here.
+
+The most relevant examples are:
+
+- *Discovering Characteristic Landmarks on Ancient Coins using Convolutional Networks*
+- *Deep Ancient Roman Republican Coin Classification via Feature Fusion and Attention*
+- *Ancient Roman Coin Recognition in the Wild Using Deep Learning Based Recognition of Artistically Depicted Face Profiles*
+
+The common pattern across those papers is not "magic model beats everything." It is:
+
+- curated, closed datasets
+- cleaner labels
+- attention to the coin's structure
+- narrower and more honest evaluation conditions
+- hierarchical recognition instead of pretending exact attribution is always possible from one messy image
+
+That lesson maps well to this project. The strongest path forward is probably family-first visual retrieval, then OCR, denomination, year, and side-specific cues to narrow the answer. If the evidence is weak, the app should return a likely family rather than fake exact certainty.
+
+## Current Research Questions
+
+- How much of the current failure mode is model quality versus artifact and runtime discipline on the phone path?
+- Does plain transfer learning beat dual-teacher distillation on real phone photos?
+- Should the mobile model focus strictly on design family first, with exact attribution delegated to OCR and metadata reranking?
+- Would landmarks, segmentation, or attention to motif and legend zones outperform blunt global embeddings on hard circulation cases?
+
+## Current Experimental Direction
+
+The current circulation retrain did not turn into a breakthrough run. A recent circulation-only run plateaued around family-aware `top1 ≈ 0.497` and `top5 ≈ 0.703`, which is useful information but not the result the system needs.
+
+That is why the next experiments are more targeted:
+
+- a family-first formulation instead of over-claiming exact coin ID on weak images
+- a no-teacher ablation to answer whether teacher distillation is helping or hurting the phone task
+- tighter evaluation on flagged phone failures instead of relying on broad internal summaries
+- better handling for circulation commemoratives and cases like the Bill Reid toonie family
+
+Longer term, the direction is not "keep asking a bigger model." The more serious path is to use stronger teachers or richer vision models offline, then distill the useful structure back into a mobile system that can run reliably on-device.
+
 ## Read First
 
 - [APPROACH.md](APPROACH.md): training strategy, data curation, and design-family setup
