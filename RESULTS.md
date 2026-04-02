@@ -2,6 +2,9 @@
 
 ## CoinCLIP v4.2 -- 99.2% Top-1 Accuracy
 
+> [!WARNING]
+> Current shipping status is different from the benchmark summary below: the app currently has a known Core ML regression affecting on-device predictions. Treat the numbers in this document as offline benchmark results for the evaluated artifact set, not as a claim about the live app build until that regression is fixed.
+
 ### Summary
 
 | Mode | Top-1 | Top-5 | Test Images | Unique Coins |

@@ -4,6 +4,8 @@
 
 Canadian Coin Heads uses a progressive three-phase identification pipeline. The design principle is to resolve high-confidence cases on-device first, then escalate only when the on-device model is uncertain. This public doc describes the architecture and the currently benchmarked on-device subset; it does not claim that every private catalog entry is already covered by the shipped on-device embedding bundle.
 
+The current shipping app also has a known Core ML regression affecting on-device predictions, so this document should be read as intended system architecture rather than a guarantee that the live app is presently matching these expectations.
+
 ## Three-Phase Pipeline
 
 ```

@@ -2,6 +2,9 @@
 
 Public technical showcase for the on-device identification pipeline behind the Canadian Coin Heads iOS app.
 
+> [!WARNING]
+> Current status: the shipping app currently has a known Core ML regression affecting on-device predictions. The benchmark numbers documented in this repository describe the offline evaluated pipeline and artifact set, not the current live app behavior until that bug is fixed.
+
 <p align="center">
   <img src="assets/portfolio-stack.png" width="250" alt="Portfolio Stack View" />
   <img src="assets/portfolio-collectibles.png" width="250" alt="Collectibles View" />
@@ -25,6 +28,8 @@ This repository documents the on-device system only. It is not the full producti
 
 The benchmark numbers here are engineering measurements for the documented on-device subset. They should not be read as a blanket guarantee for every possible real-world coin photo.
 
+At the moment, they also should not be read as a statement of the current shipping app's on-device prediction quality because of the known Core ML regression above.
+
 ## Overview
 
 Canadian Coin Heads is a production iOS app for Canadian coin collectors and precious-metals stackers. The production app uses a broader progressive pipeline, but this public repo stays focused on the local-first identification stage: CoinCLIP v4.2, a custom-trained MobileCLIP-S2 model running through Core ML with OCR-assisted reranking.
@@ -43,6 +48,8 @@ Canadian Coin Heads is a production iOS app for Canadian coin collectors and pre
 ## Results
 
 CoinCLIP v4.2 reaches **99.2% Top-1 accuracy** on a held-out benchmark of 8,112 images, rising to **99.9% with OCR reranking** on the same split.
+
+Those numbers describe the benchmark pipeline, not the currently affected shipping Core ML path.
 
 | Mode | Top-1 | Top-5 | Evaluation |
 |------|-------|-------|------------|
