@@ -15,9 +15,8 @@ Public technical showcase for the on-device identification pipeline behind the C
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Held-out Top-1 | 99.2% | CoinCLIP v4.2 on 8,112 held-out test images |
-| Held-out Top-1 + OCR | 99.9% | Same benchmark with OCR reranking |
-| Benchmarked on-device set | 1,103 coins | 25,427 bundled embeddings |
+| Public repo status | Architecture showcase | This repo documents the system design, not a reproducible public benchmark bundle |
+| Shipping app status | Core ML regression | Current on-device predictions are known to be off until that bug is fixed |
 | Model size | 137 MB | MobileCLIP-S2 Core ML export |
 | Runtime | iOS 17+ | Core ML + Vision + Accelerate |
 | License | Proprietary | Public showcase materials only |
@@ -26,9 +25,9 @@ Public technical showcase for the on-device identification pipeline behind the C
 
 This repository documents the on-device system only. It is not the full production app source code, and it does not publish the private production catalog or backend implementation.
 
-The benchmark numbers here are engineering measurements for the documented on-device subset. They should not be read as a blanket guarantee for every possible real-world coin photo.
+This repo is meant to show the architecture, training approach, and failure modes of the on-device system. It is not a self-contained public benchmark package.
 
-At the moment, they also should not be read as a statement of the current shipping app's on-device prediction quality because of the known Core ML regression above.
+The shipping app also currently has a known Core ML regression, so public readers should not infer current prediction quality from historical internal experiments.
 
 ## Overview
 
@@ -37,26 +36,19 @@ Canadian Coin Heads is a production iOS app for Canadian coin collectors and pre
 ## Technical Highlights
 
 - **Custom LoRA fine-tuning** (rank-16) on Apple's MobileCLIP-S2 architecture -- 274K trainable parameters on a 137M parameter backbone
-- **Contrastive learning with design-family grouping** -- 1,103 coins organized into 59 design families + 154 unique solo classes (213 total)
-- **25,591 real training photos** (deduplicated from 44K) with hard-negative mining and confusion pair extraction (1,004 mined pairs)
-- **OCR post-processing** with fuzzy year/denomination matching via Apple Vision framework (+0.7% accuracy boost, eliminates confident misidentifications)
+- **Contrastive learning with design-family grouping** -- visually similar year-variants are grouped so the model learns design structure instead of memorizing mint dates
+- **Large real-photo training corpus** with deduplication and hard-negative mining
+- **OCR post-processing** with fuzzy year and denomination matching to reduce confident wrong answers
 - **Float32 Core ML deployment** tuned for iPhone execution, with a bundled benchmark harness for real-device latency validation
 - **Three-phase progressive pipeline**: on-device CLIP, cloud CLIP (pgvector), Claude Vision hybrid -- each phase fires only if the previous one is uncertain
-- **25,427 pre-computed embeddings across 1,103 unique coins** with vDSP-accelerated cosine similarity search
+- **Bundled embedding gallery** searched with vDSP-accelerated cosine similarity
 - **Production test coverage**: 49 iOS test files and 241 backend tests in the broader app codebase
 
-## Results
+## Benchmark Status
 
-CoinCLIP v4.2 reaches **99.2% Top-1 accuracy** on a held-out benchmark of 8,112 images, rising to **99.9% with OCR reranking** on the same split.
+This public repo does **not** currently publish a reproducible benchmark bundle for the on-device model.
 
-Those numbers describe the benchmark pipeline, not the currently affected shipping Core ML path.
-
-| Mode | Top-1 | Top-5 | Evaluation |
-|------|-------|-------|------------|
-| Pure CLIP | 99.2% | ~99.7% | 8,112-image holdout benchmark |
-| CLIP + OCR | 99.9% | ~99.9% | Same holdout benchmark |
-
-Small external spot-check sets also improved materially with OCR, but the main benchmark above is the number this repo is centered on. See [RESULTS.md](RESULTS.md) for methodology, sample sizes, limitations, and version history.
+See [RESULTS.md](RESULTS.md) for the current benchmark-status note, including what is missing and what would need to be published before exact performance claims belong on the front page.
 
 ## Architecture
 
@@ -73,10 +65,10 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full pipeline diagram and system 
 The model is trained using contrastive learning on design families -- groups of visually identical coins that differ only in mint year or minor variants. This lets the model learn what makes a Silver Maple Leaf look different from a Caribou quarter, rather than memorizing year text.
 
 Key innovations:
-- Design-family grouping (59 families from 1,103 coins, with 154 unique solo classes)
-- Hard-negative mining with confusion pair feedback loops (1,004 auto-mined pairs)
+- Design-family grouping for visually identical year-variants
+- Hard-negative mining with confusion-pair feedback loops
 - OCR-based post-processing for disambiguation
-- Aggressive label cleanup (1,201 fixes between v3.2 and v4.2)
+- Aggressive label cleanup and family-definition repair
 
 See [APPROACH.md](APPROACH.md) for the full training methodology and architecture decisions.
 
@@ -84,7 +76,7 @@ See [APPROACH.md](APPROACH.md) for the full training methodology and architectur
 
 - [APPROACH.md](APPROACH.md): training strategy, data curation, and design-family setup
 - [ARCHITECTURE.md](ARCHITECTURE.md): runtime pipeline and fallback system design
-- [RESULTS.md](RESULTS.md): benchmark methodology, historical results, and limitations
+- [RESULTS.md](RESULTS.md): benchmark status, limitations, and reproducibility note
 
 ## Stack
 

@@ -30,7 +30,7 @@ The current shipping app also has a known Core ML regression affecting on-device
                   |                     v                    |
                   |  +------------------------------------+  |
                   |  | vDSP Similarity Search             |  |
-                  |  | 25,427 pre-computed embeddings     |  |
+                  |  | Pre-computed embedding gallery     |  |
                   |  | Cosine similarity via Accelerate   |  |
                   |  | Full search: <50ms                 |  |
                   |  +------------------+-----------------+  |
@@ -104,7 +104,7 @@ The progressive architecture is motivated by a simple observation: many coins ar
 
 ### CoinCLIP v4.2
 
-The on-device model is a MobileCLIP-S2 visual encoder fine-tuned with LoRA on 44,332 real coin photographs (25,591 unique after deduplication).
+The on-device model is a MobileCLIP-S2 visual encoder fine-tuned with LoRA on a large real-photo coin corpus.
 
 **Architecture:**
 - Base: MobileCLIP-S2 visual encoder (Apple's distilled CLIP variant)
@@ -126,18 +126,18 @@ The on-device model is a MobileCLIP-S2 visual encoder fine-tuned with LoRA on 44
 |-------|------|
 | Image preprocessing (resize, normalize) | ~10ms |
 | Core ML model inference | ~200-250ms |
-| vDSP similarity search (25,427 embeddings) | ~30-50ms |
+| vDSP similarity search (bundled embedding gallery) | ~30-50ms |
 | OCR text extraction + scoring | ~20-50ms |
 | **Total** | **<300ms** |
 
 ### Embedding Database
 
-The current bundled on-device embedding set consists of 25,427 pre-computed embeddings covering 1,103 unique coins. They are stored in two files bundled with the app:
+The bundled on-device gallery is stored in two files inside the app:
 
-- **Binary file** (49.7 MB): Flat array of Float32 values, 25,427 embeddings x 512 dimensions. Memory-mapped at runtime for zero-copy access.
-- **Index file** (~3.4 MB JSON): Maps each embedding position to coin ID, design family, denomination, year, and metadata needed for result display.
+- **Binary file**: Flat array of Float32 values, memory-mapped at runtime for zero-copy access.
+- **Index file**: Maps each embedding position to coin ID, design family, denomination, year, and metadata needed for result display.
 
-Similarity search is implemented with vDSP matrix multiplication (Apple Accelerate framework), computing cosine similarity between the query embedding and all 25,427 stored embeddings in a single vectorized operation.
+Similarity search is implemented with vDSP matrix multiplication (Apple Accelerate framework), computing cosine similarity between the query embedding and the bundled gallery in a single vectorized operation.
 
 ## Cloud Fallback
 

@@ -35,7 +35,7 @@ MobileCLIP-S2 is Apple's knowledge-distilled variant of CLIP, trained with their
 
 ### Why LoRA
 
-The MobileCLIP-S2 visual encoder has ~137M parameters. Fine-tuning all of them on 44,332 images risks severe overfitting, especially given that many coin classes have fewer than 50 training images.
+The MobileCLIP-S2 visual encoder has ~137M parameters. Fine-tuning all of them on a specialized coin-photo corpus risks severe overfitting, especially given that many coin classes have limited examples.
 
 LoRA (Low-Rank Adaptation) freezes the pretrained weights and trains small rank-decomposition matrices on the attention layers. This provides:
 
@@ -56,7 +56,7 @@ The naive approach -- treating each coin as an independent class and training wi
 
 **The problem:** A 2020 Silver Maple Leaf and a 2021 Silver Maple Leaf are visually identical except for a single digit in tiny text. Training with 38 separate classes for 38 years of Maple Leaves forces the model to learn OCR rather than visual features. But the model is not a text recognition system -- it is an image encoder.
 
-**The solution:** Group visually identical coins into "design families." All Silver Maple Leaves (1988-2026) form one family. All Bluenose dimes (1937-1989) form another. 1,103 unique coins are organized into 59 design families (919 coins) plus 154 solo classes for coins with unique designs.
+**The solution:** Group visually identical coins into "design families." All Silver Maple Leaves form one family. All Bluenose dimes form another. Coins with genuinely unique reverses remain solo classes.
 
 The contrastive loss (in-batch negatives, InfoNCE-style) then teaches the model: "a Maple Leaf should be similar to other Maple Leaves and dissimilar from Caribou quarters." This is what the visual encoder can actually learn -- the structural and design differences between coin types.
 
@@ -66,14 +66,14 @@ Post-identification disambiguation within a design family is handled by OCR, whi
 
 ### Data Collection
 
-25,591 unique real coin photographs (deduplicated from 44,332) sourced from:
+A large real-photo corpus sourced from:
 - eBay auction listings (automated scraping with Playwright)
 - Collector community submissions
 - Royal Canadian Mint product photography
 
 No synthetic data augmentation was used. The real-world variety in eBay listings -- different lighting, backgrounds, angles, image quality -- provides sufficient augmentation naturally. Training images range from professional studio shots to blurry phone photos on kitchen tables.
 
-Post-training deduplication removed 18,887 byte-identical images (confirmed via CoinCLIP embedding identity + MD5 verification). The model was trained on the full 44K set; the deduplicated 25K set is used for the shipped embedding database.
+Post-training deduplication removed large numbers of byte-identical duplicates. The model was trained on the broader corpus, while the shipped gallery is built from a deduplicated subset.
 
 ### Preprocessing
 
@@ -90,7 +90,7 @@ Design families are derived from `reverseDesignId` metadata in the coin database
 2. Coins with the same reverse design across different years join the same family
 3. Strip collectibles from standard circulation families (they share denominations but not designs)
 4. Give circulation commemoratives their own unique IDs (e.g., poppy quarter, hockey toonie)
-5. Result: 59 design families (919 coins) + 154 solo classes = 213 total classes from 1,103 unique coins
+5. Result: a mix of shared design families for repeat reverses plus solo classes for genuinely unique designs
 
 Examples:
 - `maple-leaf-bullion` family: 38 coins (1988-2026), all with Walter Ott's Sugar Maple Leaf reverse
@@ -109,7 +109,7 @@ After each training epoch, the model's top confusion pairs are extracted -- case
 3. Rank these cross-family similarities
 4. Top pairs are flagged as "hard negatives" and weighted more heavily in subsequent epochs
 
-CoinCLIP v4.2 identified 1,004 confusion pairs during training (up from 321 in v3.2). Common confusion categories:
+CoinCLIP v4.2 surfaced a large set of confusion pairs during training. Common confusion categories:
 - Coins with similar wildlife reverses (e.g., caribou vs. elk)
 - Same denomination with similar composition (nickel 5-cent pieces across design eras)
 - Commemorative coins that share design elements with circulation types
@@ -142,11 +142,7 @@ After the CLIP model produces its top-k candidate matches, OCR post-processing r
 
 ### Impact
 
-| Metric | Without OCR | With OCR | Delta |
-|--------|-------------|----------|-------|
-| Top-1 | 99.2% | 99.9% | +0.7% |
-
-The accuracy improvement is +0.7% on the holdout set, but the real impact shows on wild images: pure CLIP gets 25-33% on eBay photos and random internet images, while CLIP+OCR hits 100%. OCR eliminates *confident wrong answers* -- cases where the CLIP model is highly certain about a visually similar but incorrect coin. The denomination penalty is particularly effective at catching cross-denomination confusion.
+Internal evaluation showed that OCR reranking materially reduced confident wrong answers, especially on cluttered or text-heavy images where visual similarity alone was not enough.
 
 ### Parameter Optimization
 
@@ -156,13 +152,11 @@ OCR boost/penalty values were optimized via grid search on a validation split an
 
 ### Pre-Computation
 
-All 25,591 unique photos are encoded with the merged LoRA model (base MobileCLIP-S2 + trained LoRA weights merged into a single checkpoint). This produces 25,427 512-dimensional L2-normalized embeddings covering 1,103 unique coins.
+The deduplicated gallery photos are encoded with the merged LoRA model (base MobileCLIP-S2 + trained LoRA weights merged into a single checkpoint). This produces a large bundled embedding gallery for retrieval at inference time.
 
 ### Storage Format
 
-Embeddings are stored as a flat binary file of Float32 values:
-- `coin_embeddings.bin`: 25,427 embeddings x 512 dimensions x 4 bytes = 49.7 MB
-- `coin_embeddings_index.json`: Maps each embedding position to its coin ID, design family, and metadata (~3.4 MB)
+Embeddings are stored as a flat binary file of Float32 values plus a JSON index that maps each embedding position to coin metadata.
 
 Both files ship in the iOS app bundle. No network request needed for the full embedding database.
 
@@ -170,9 +164,9 @@ Both files ship in the iOS app bundle. No network request needed for the full em
 
 At inference time:
 1. The input photo is encoded to a 512-dim vector by the Core ML model (~250ms)
-2. The vector is compared against all 25,427 stored embeddings via cosine similarity
+2. The vector is compared against the bundled stored embeddings via cosine similarity
 3. Similarity computation uses Apple's vDSP framework (part of Accelerate) for SIMD-optimized matrix operations
-4. Full search across 25,427 embeddings completes in <50ms
+4. Full search across the bundled gallery completes in tens of milliseconds
 5. Top-k results are returned with similarity scores
 
 Total on-device latency: model inference (~250ms) + similarity search (~50ms) + OCR (~variable) = under 300ms for most identifications.
