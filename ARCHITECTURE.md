@@ -2,7 +2,7 @@
 
 ## Overview
 
-Canadian Coin Heads uses a progressive three-phase identification pipeline. The design principle: resolve as many queries as possible on-device, escalating to the cloud only when the on-device model is uncertain. This minimizes latency, bandwidth, and cost for the 97% of identifications that the on-device model handles confidently.
+Canadian Coin Heads uses a progressive three-phase identification pipeline. The design principle is to resolve high-confidence cases on-device first, then escalate only when the on-device model is uncertain. This public doc describes the architecture and the currently benchmarked on-device subset; it does not claim that every private catalog entry is already covered by the shipped on-device embedding bundle.
 
 ## Three-Phase Pipeline
 
@@ -54,8 +54,8 @@ Canadian Coin Heads uses a progressive three-phase identification pipeline. The 
                            v                         v
                     +-----------+     +------------------------------------------+
                     |  RESULT   |     |         PHASE 1: Cloud CLIP             |
-                    |  (97% of  |     |         Target: 2-5s                    |
-                    |  queries) |     |                                          |
+                    |  (high-   |     |         Target: 2-5s                    |
+                    | confidence)|    |                                          |
                     +-----------+     |  ViT-B-32 (LAION2B pretrained)          |
                                       |  PostgreSQL + pgvector                  |
                                       |  1,904 server-side embeddings           |
@@ -90,13 +90,13 @@ Canadian Coin Heads uses a progressive three-phase identification pipeline. The 
 
 ## Why Three Phases
 
-The progressive architecture is motivated by a simple observation: most coins are common, well-photographed types that the on-device model handles confidently. Sending every identification request to the cloud would add unnecessary latency and cost.
+The progressive architecture is motivated by a simple observation: many coins are common, well-photographed types that the on-device model can handle confidently. Sending every identification request to the cloud would add unnecessary latency and cost.
 
-**Phase 0 handles ~97% of queries.** The on-device model resolves the vast majority of identifications in under 300ms with no network dependency. This means the app works offline, responds instantly, and costs nothing per query.
+**Phase 0 is the fast path.** The on-device model resolves high-confidence identifications locally with no network dependency. This is what makes the experience feel instant and keeps the app useful offline.
 
-**Phase 1 catches the next ~2%.** When the on-device model is uncertain (similarity score below 0.85 or small gap to the second-best match), the cloud CLIP model provides a second opinion. It uses a different model architecture (ViT-B-32) and different pretrained weights (LAION2B), so its failure modes are largely independent of the on-device model.
+**Phase 1 is the second opinion.** When the on-device model is uncertain (similarity score below 0.85 or small gap to the second-best match), the cloud CLIP model provides a second opinion. It uses a different model architecture (ViT-B-32) and different pretrained weights (LAION2B), so its failure modes are largely independent of the on-device model.
 
-**Phase 2 handles the hardest ~1%.** For the most ambiguous cases, Claude Vision provides visual reasoning capabilities that pure embedding similarity cannot: reading partially obscured text, recognizing design motifs, and reasoning about coin characteristics. Combined with structured database scoring (metal type, year range, design elements), this phase achieves reliable identification even for the hardest cases.
+**Phase 2 handles the hardest cases.** For the most ambiguous cases, Claude Vision provides visual reasoning capabilities that pure embedding similarity cannot: reading partially obscured text, recognizing design motifs, and reasoning about coin characteristics. Combined with structured database scoring (metal type, year range, design elements), this phase adds another layer of evidence for cases that remain uncertain after the first two stages.
 
 ## On-Device Model
 
@@ -130,7 +130,7 @@ The on-device model is a MobileCLIP-S2 visual encoder fine-tuned with LoRA on 44
 
 ### Embedding Database
 
-The 25,427 pre-computed embeddings are stored in two files bundled with the app:
+The current bundled on-device embedding set consists of 25,427 pre-computed embeddings covering 1,103 unique coins. They are stored in two files bundled with the app:
 
 - **Binary file** (49.7 MB): Flat array of Float32 values, 25,427 embeddings x 512 dimensions. Memory-mapped at runtime for zero-copy access.
 - **Index file** (~3.4 MB JSON): Maps each embedding position to coin ID, design family, denomination, year, and metadata needed for result display.

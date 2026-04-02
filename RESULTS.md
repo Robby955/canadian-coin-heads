@@ -13,6 +13,8 @@ Evaluated on 8,112 held-out test images across 1,103 unique coins. No coin appea
 
 ### External Test Results
 
+These external checks are small spot-check sets, not a replacement for the main 8,112-image holdout benchmark above.
+
 | Test Set | Images | Pure CLIP | CLIP+OCR | Description |
 |----------|--------|-----------|----------|-------------|
 | Holdout | 8,112 | 99.2% | 99.9% | Random 25% split from training photos |
@@ -45,7 +47,7 @@ The jump from 97.2% to 99.2% came almost entirely from **data quality**, not mod
 
 **Photo deduplication.** Post-training, 18,887 byte-identical duplicates were removed from the photo collection (44K → 25,591 unique images). The embeddings shipped in the app are generated from the deduplicated set (25,427 embeddings), which reduces app binary size without losing coverage.
 
-**OCR post-processing.** Same parameters as v3.2 (year boost +0.08, denomination penalty -0.20), but the accuracy gain is larger (+0.7% vs +0.2%) because cleaner CLIP rankings give OCR better candidates to work with. On external wild images, OCR takes pure CLIP from 25-33% to 100% -- it compensates for cluttered backgrounds where embedding similarity alone struggles.
+**OCR post-processing.** Same parameters as v3.2 (year boost +0.08, denomination penalty -0.20), but the accuracy gain is larger (+0.7% vs +0.2%) because cleaner CLIP rankings give OCR better candidates to work with. On the small external spot-check sets, OCR takes pure CLIP from 25-33% to 100% -- it compensates for cluttered backgrounds where embedding similarity alone struggles.
 
 ### Evaluation Methodology
 

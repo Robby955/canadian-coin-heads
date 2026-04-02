@@ -1,13 +1,6 @@
 # Canadian Coin Heads
 
-**On-device AI identification of Canadian coins with 99.2% accuracy.**
-
-![Accuracy](https://img.shields.io/badge/Top--1_Accuracy-99.2%25-brightgreen)
-![Model Size](https://img.shields.io/badge/Model_Size-137_MB-blue)
-![Coins](https://img.shields.io/badge/Coins-5%2C791-orange)
-![Tests](https://img.shields.io/badge/Tests-1%2C134%2B-blue)
-![Platform](https://img.shields.io/badge/Platform-iOS_17%2B-black)
-![License](https://img.shields.io/badge/License-Proprietary-lightgrey)
+Public technical showcase for the on-device identification pipeline behind the Canadian Coin Heads iOS app.
 
 <p align="center">
   <img src="assets/portfolio-stack.png" width="250" alt="Portfolio Stack View" />
@@ -15,11 +8,26 @@
   <img src="assets/portfolio-series.png" width="250" alt="Series Completion Tracking" />
 </p>
 
+## At a Glance
+
+| Metric | Value | Notes |
+|--------|-------|-------|
+| Held-out Top-1 | 99.2% | CoinCLIP v4.2 on 8,112 held-out test images |
+| Held-out Top-1 + OCR | 99.9% | Same benchmark with OCR reranking |
+| Benchmarked on-device set | 1,103 coins | 25,427 bundled embeddings |
+| Model size | 137 MB | MobileCLIP-S2 Core ML export |
+| Runtime | iOS 17+ | Core ML + Vision + Accelerate |
+| License | Proprietary | Public showcase materials only |
+
+## Scope
+
+This repository documents the on-device system only. It is not the full production app source code, and it does not publish the private production catalog or backend implementation.
+
+The benchmark numbers here are engineering measurements for the documented on-device subset. They should not be read as a blanket guarantee for every possible real-world coin photo.
+
 ## Overview
 
-Canadian Coin Heads is a production iOS app, live on the App Store, that identifies 5,791+ Royal Canadian Mint coins from a single photo. The app covers every Canadian coin denomination from 1858 to 2026 -- circulation, bullion, and collectible series.
-
-At its core is CoinCLIP v4.2, a custom-trained MobileCLIP-S2 model running entirely on-device via Core ML. No server round-trip is needed for 97% of identifications. The model achieves 99.2% Top-1 accuracy on a held-out benchmark of 8,112 test images across 1,103 unique coins, and 100% on external wild images with OCR post-processing.
+Canadian Coin Heads is a production iOS app for Canadian coin collectors and precious-metals stackers. The production app uses a broader progressive pipeline, but this public repo stays focused on the local-first identification stage: CoinCLIP v4.2, a custom-trained MobileCLIP-S2 model running through Core ML with OCR-assisted reranking.
 
 ## Technical Highlights
 
@@ -27,79 +35,31 @@ At its core is CoinCLIP v4.2, a custom-trained MobileCLIP-S2 model running entir
 - **Contrastive learning with design-family grouping** -- 1,103 coins organized into 59 design families + 154 unique solo classes (213 total)
 - **25,591 real training photos** (deduplicated from 44K) with hard-negative mining and confusion pair extraction (1,004 mined pairs)
 - **OCR post-processing** with fuzzy year/denomination matching via Apple Vision framework (+0.7% accuracy boost, eliminates confident misidentifications)
-- **On-device Core ML inference under 300ms** on iPhone 12+ with Float32 precision
+- **Float32 Core ML deployment** tuned for iPhone execution, with a bundled benchmark harness for real-device latency validation
 - **Three-phase progressive pipeline**: on-device CLIP, cloud CLIP (pgvector), Claude Vision hybrid -- each phase fires only if the previous one is uncertain
-- **25,427 pre-computed embeddings** with vDSP-accelerated cosine similarity search (full search in <50ms)
-- **Full test coverage**: 893+ iOS unit tests across 49 test files, 241 backend tests
-
-## Architecture
-
-The identification system uses a progressive three-phase pipeline. Each phase is more powerful but slower, and only fires if the previous phase returned low confidence.
-
-```
-    Photo Input
-        |
-        v
-+---------------------------------------+
-|  PHASE 0: On-Device  (<300ms)         |
-|                                        |
-|  CoinCLIP v4.2 (Core ML)              |
-|  MobileCLIP-S2 + LoRA                 |
-|       |                                |
-|       v                                |
-|  Encode photo -> 512-dim embedding     |
-|       |                                |
-|       v                                |
-|  vDSP cosine similarity               |
-|  vs 25,427 pre-computed embeddings     |
-|       |                                |
-|       v                                |
-|  Top matches + confidence score        |
-|       |                                |
-|       v                                |
-|  OCR refinement (year, denomination)   |
-+---------------------------------------+
-        |
-        | confidence < 0.85?
-        v
-+---------------------------------------+
-|  PHASE 1: Cloud CLIP  (2-5s)         |
-|                                        |
-|  ViT-B-32 (LAION2B) + pgvector        |
-|  1,904 server-side embeddings          |
-|  Separate embedding space              |
-+---------------------------------------+
-        |
-        | confidence < 0.85?
-        v
-+---------------------------------------+
-|  PHASE 2: Hybrid Analysis  (15-45s)  |
-|                                        |
-|  Claude Vision reasoning               |
-|  + structured database scoring         |
-|  (metal, year, design elements)        |
-+---------------------------------------+
-        |
-        v
-    Identification Result
-    + confidence badge
-    + alternative matches
-```
-
-97% of identifications resolve in Phase 0 -- entirely on-device, no network required.
+- **25,427 pre-computed embeddings across 1,103 unique coins** with vDSP-accelerated cosine similarity search
+- **Production test coverage**: 49 iOS test files and 241 backend tests in the broader app codebase
 
 ## Results
 
-CoinCLIP v4.2 achieves **99.2% Top-1 accuracy** on a held-out benchmark, rising to **99.9% with OCR post-processing**. On external wild images (eBay auctions, random internet photos), it hits **100% with OCR**.
+CoinCLIP v4.2 reaches **99.2% Top-1 accuracy** on a held-out benchmark of 8,112 images, rising to **99.9% with OCR reranking** on the same split.
 
-| Mode | Top-1 | Top-5 |
-|------|-------|-------|
-| Pure CLIP | 99.2% | ~99.7% |
-| CLIP + OCR | 99.9% | ~99.9% |
+| Mode | Top-1 | Top-5 | Evaluation |
+|------|-------|-------|------------|
+| Pure CLIP | 99.2% | ~99.7% | 8,112-image holdout benchmark |
+| CLIP + OCR | 99.9% | ~99.9% | Same holdout benchmark |
 
-Evaluated on 8,112 held-out test images across 1,103 unique coins. No coin appears in both training and test sets.
+Small external spot-check sets also improved materially with OCR, but the main benchmark above is the number this repo is centered on. See [RESULTS.md](RESULTS.md) for methodology, sample sizes, limitations, and version history.
 
-See [RESULTS.md](RESULTS.md) for full benchmark results, version history, and methodology.
+## Architecture
+
+The production app uses a progressive three-phase pipeline:
+
+1. **Phase 0 -- On-device:** CoinCLIP v4.2 produces a 512-dimensional embedding and ranks against the bundled embedding set.
+2. **Phase 1 -- Cloud CLIP:** a separate embedding space provides a second opinion when confidence is weak.
+3. **Phase 2 -- Hybrid analysis:** structured reasoning is used only for the hardest cases.
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full pipeline diagram and system notes.
 
 ## Training Pipeline
 
@@ -113,11 +73,11 @@ Key innovations:
 
 See [APPROACH.md](APPROACH.md) for the full training methodology and architecture decisions.
 
-## System Architecture
+## Repo Contents
 
-The three-phase pipeline is designed so the fastest, cheapest option handles the vast majority of queries, with progressively more powerful (and expensive) fallbacks for uncertain cases.
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed system design.
+- [APPROACH.md](APPROACH.md): training strategy, data curation, and design-family setup
+- [ARCHITECTURE.md](ARCHITECTURE.md): runtime pipeline and fallback system design
+- [RESULTS.md](RESULTS.md): benchmark methodology, historical results, and limitations
 
 ## Stack
 
