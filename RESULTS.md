@@ -1,17 +1,17 @@
-# Benchmark Status
+# Benchmark Notes
 
 > [!WARNING]
 > The shipping app currently has a known Core ML regression affecting on-device predictions.
 
-This public repository does not currently include a reproducible benchmark bundle for the on-device model.
+This repo does not currently include a reproducible public benchmark bundle for the on-device model.
 
-## Current Public Position
+## What This Means
 
-- This repo documents the architecture, training approach, and known limitations of the on-device pipeline.
-- It does not publish the full machine-readable holdout set, scoring outputs, artifact checksums, and reproduction steps needed to support a serious public benchmark claim.
-- For that reason, exact historical internal percentages are intentionally not presented here as a front-facing public result.
+- The repo is useful for understanding the model and system design.
+- It is not yet a publishable benchmark package in the academic or reproducible-ML sense.
+- That is why exact historical percentages are not being presented as the headline public story here.
 
-## What Would Be Required For A Professional Public Benchmark
+## What A Serious Public Benchmark Release Would Need
 
 1. A published holdout manifest with stable identifiers for every evaluation image.
 2. Published checksums for the exact model artifact and embedding bundle used in evaluation.
@@ -21,9 +21,9 @@ This public repository does not currently include a reproducible benchmark bundl
 
 ## Why This Matters
 
-Without the pieces above, exact percentages read as a claim rather than evidence. That is not the standard this repo should present publicly.
+Without those pieces, exact percentages read as a claim rather than evidence. That is not the standard this repo should present publicly.
 
-## Current Guidance
+## How To Read This Repo
 
 - Read this repo as a technical showcase of the intended system design.
 - Do not read it as proof of current shipping accuracy.
